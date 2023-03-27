@@ -11,4 +11,7 @@ class TaskRepository(private val taskDao: TaskDao) {
     suspend fun removeAllData(){
         taskDao.dropMyStoredData()
     }
+    suspend fun readStoredData(){
+        taskDao.readStoredData()
+    }
 }

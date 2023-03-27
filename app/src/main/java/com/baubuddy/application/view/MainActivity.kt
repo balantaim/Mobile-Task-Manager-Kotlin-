@@ -1,12 +1,10 @@
 package com.baubuddy.application.view
 
-import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.view.WindowManager
 import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.SearchView
@@ -14,23 +12,19 @@ import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.work.*
-import androidx.work.multiprocess.RemoteWorkManager
-import androidx.work.multiprocess.RemoteWorkManager.getInstance
 import com.baubuddy.application.R
 import com.baubuddy.application.network.GetDataFromTheServer
 import com.baubuddy.application.data.Task
 import com.baubuddy.application.data.TaskDatabase
 import com.baubuddy.application.tools.ThreadUtil
-import com.baubuddy.application.viewmodel.MainViewModel
+import com.baubuddy.application.viewmodel.TaskViewModel
 import com.baubuddy.application.worker.NetworkWorker
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import okhttp3.internal.notifyAll
 import java.util.concurrent.TimeUnit
-import kotlin.system.exitProcess
 
 
 class MainActivity : AppCompatActivity() {
@@ -45,7 +39,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadingInformation: TextView
     private lateinit var searchField: SearchView
     private lateinit var taskDB: TaskDatabase
-    val viewModel: MainViewModel by viewModels()
+    val viewModel: TaskViewModel by viewModels()
+
+    companion object{
+        const val RESULT = "RESULT"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -53,29 +51,24 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         taskDB = TaskDatabase.getDatabase(this)
         init()
-        periodicTimeWorker()
         updateUI()
-        search.setOnClickListener {
-            if(View.GONE == searchField.visibility){
+        periodicTimeWorker()
+        onSearchBtnClicked()
+        onSwipeAction()
+        navigateToScanCodeActivity()
+        sortFromListView()
+
+        val stringQRCode: String? = intent.getStringExtra(RESULT)
+        if (!stringQRCode.isNullOrEmpty()){
+            if (View.GONE == searchField.visibility){
                 codeQR.visibility = View.VISIBLE
                 searchField.visibility = View.VISIBLE
-            }else if(View.VISIBLE == searchField.visibility && searchField.query == ""){
-                codeQR.visibility = View.GONE
-                searchField.visibility = View.GONE
-            }else{
-                //searchField.query = ""
             }
+            searchField.setQuery(stringQRCode, false)
+            //Toast.makeText(this, "String: $stringQRCode", Toast.LENGTH_LONG).show()
         }
-        mySwipeRefreshLayout.setOnRefreshListener {
-            Log.d("SwipeRefresh", "onRefresh called from SwipeRefreshLayout")
-            oneTimeWorker()
-            listView.deferNotifyDataSetChanged()
-            mySwipeRefreshLayout.isRefreshing = false
-        }
-        codeQR.setOnClickListener{
-            val intent = Intent(this, TaskInfoActivity::class.java)
-            startActivity(intent)
-        }
+    }
+    private fun sortFromListView() {
         searchField.setOnQueryTextListener(object: SearchView.OnQueryTextListener{
             override fun onQueryTextSubmit(query: String?): Boolean {
                 searchField.clearFocus()
@@ -100,28 +93,52 @@ class MainActivity : AppCompatActivity() {
                         newList.add(data[i])
                     }
                 }
-//                data = newList
-//                listView.adapter.notifyAll()
-
+                data = newList
+                //To do update
                 return false
             }
-
             override fun onQueryTextChange(newText: String?): Boolean {
                 //filterData(newText)
                 return false
             }
-
         })
-
+    }
+    private fun navigateToScanCodeActivity() {
+        codeQR.setOnClickListener{
+            val intent = Intent(this, TaskInfoActivity::class.java)
+            startActivity(intent)
+        }
+    }
+    private fun onSwipeAction() {
+        mySwipeRefreshLayout.setOnRefreshListener {
+            Log.d("SwipeRefresh", "onRefresh called from SwipeRefreshLayout")
+            oneTimeWorker()
+            listView.deferNotifyDataSetChanged()
+            mySwipeRefreshLayout.isRefreshing = false
+        }
+    }
+    private fun onSearchBtnClicked() {
+        search.setOnClickListener {
+            if(View.GONE == searchField.visibility){
+                codeQR.visibility = View.VISIBLE
+                searchField.visibility = View.VISIBLE
+            }else if(View.VISIBLE == searchField.visibility && searchField.query.toString() == ""){
+                codeQR.visibility = View.GONE
+                searchField.visibility = View.GONE
+            }else{
+                //searchField.query = ""
+            }
+        }
     }
     private fun periodicTimeWorker(){
-        Log.d("Worker-Periodic", " <<<Main: Worker Start>>>")
+        Log.d("Worker-Periodic", " <<<MainPeriodic: Worker Start>>>")
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
         val uploadWorkRequest: WorkRequest =
             PeriodicWorkRequestBuilder<NetworkWorker>(60, TimeUnit.MINUTES)
                 .setConstraints(constraints)
+                .addTag("Periodic")
                 .setInitialDelay(60, TimeUnit.MINUTES)
                 .build()
         WorkManager.getInstance(applicationContext).enqueue(uploadWorkRequest)
@@ -134,6 +151,7 @@ class MainActivity : AppCompatActivity() {
         val uploadWorkRequest: WorkRequest =
             OneTimeWorkRequestBuilder<NetworkWorker>()
                 .setConstraints(constraints)
+                .addTag("OneTime")
                 .build()
         WorkManager.getInstance(applicationContext).enqueue(uploadWorkRequest)
 
@@ -156,7 +174,7 @@ class MainActivity : AppCompatActivity() {
                         search.visibility = View.VISIBLE
 
                         listView.isClickable = true
-                        listView.adapter = MainAdapter(this, data)
+                        setUpListAdapter()
                         listView.setOnItemClickListener { parent, view, position, id ->
                             navigateToTaskInfo(position)
                         }
@@ -169,6 +187,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun setUpListAdapter() {
+        val arrayAdapter = MainAdapter(this, data)
+        listView.adapter = arrayAdapter
+        //listView.adapter = MainAdapter(this, data)
+    }
+
     private fun navigateToTaskInfo(position: Int){
         val intent = Intent(this, TaskInfoActivity::class.java)
         val title = data[position].title
@@ -206,10 +231,5 @@ class MainActivity : AppCompatActivity() {
         listView = findViewById(R.id.listView)
         loadingInformation = findViewById(R.id.loadingInformation)
     }
-
-//    override fun onBackPressed() {
-//        finish()
-//        exitProcess(0)
-//    }
 
 }

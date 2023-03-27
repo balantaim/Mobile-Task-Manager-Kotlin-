@@ -52,44 +52,53 @@ class GetDataFromTheServer {
             //Get the array object
             if (!response.isSuccessful) throw IOException("Unexpected code $response")
             val jsonArray = JSONTokener(response.body?.string()).nextValue() as JSONArray
+
             if (jsonArray.length() != 0){
-                for (i in 0 until jsonArray.length()){
-                    allData.add(
-                        Task(
-                            UUID.randomUUID().toString(),
-                            jsonArray.getJSONObject(i).getString("task"),
-                            jsonArray.getJSONObject(i).getString("title"),
-                            jsonArray.getJSONObject(i).getString("description"),
-                            jsonArray.getJSONObject(i).getInt("sort"),
-                            jsonArray.getJSONObject(i).getString("wageType"),
-                            jsonArray.getJSONObject(i).getString("BusinessUnitKey"),
-                            jsonArray.getJSONObject(i).getString("businessUnit"),
-                            jsonArray.getJSONObject(i).getString("parentTaskID"),
-                            jsonArray.getJSONObject(i).getString("preplanningBoardQuickSelect"),
-                            jsonArray.getJSONObject(i).getString("colorCode"),
-                            jsonArray.getJSONObject(i).getString("workingTime"),
-                            jsonArray.getJSONObject(i).getBoolean("isAvailableInTimeTrackingKioskMode")
-                        )
-                    )
-                }
+                allData = convertJSONDataToTask(jsonArray)
             }
         }catch (e: IOException){
             e.printStackTrace()
         }
         return allData
     }
+    private fun convertJSONDataToTask(jsonArray: JSONArray): ArrayList<Task> {
+        var allData = ArrayList<Task>()
+        for (i in 0 until jsonArray.length()){
+            allData.add(
+                Task(
+                    UUID.randomUUID().toString(),
+                    jsonArray.getJSONObject(i).getString("task"),
+                    jsonArray.getJSONObject(i).getString("title"),
+                    jsonArray.getJSONObject(i).getString("description"),
+                    jsonArray.getJSONObject(i).getInt("sort"),
+                    jsonArray.getJSONObject(i).getString("wageType"),
+                    jsonArray.getJSONObject(i).getString("BusinessUnitKey"),
+                    jsonArray.getJSONObject(i).getString("businessUnit"),
+                    jsonArray.getJSONObject(i).getString("parentTaskID"),
+                    jsonArray.getJSONObject(i).getString("preplanningBoardQuickSelect"),
+                    jsonArray.getJSONObject(i).getString("colorCode"),
+                    jsonArray.getJSONObject(i).getString("workingTime"),
+                    jsonArray.getJSONObject(i).getBoolean("isAvailableInTimeTrackingKioskMode")
+                )
+            )
+        }
+        return  allData
+    }
+    private fun convertTokenToString(jsonObject: JSONObject) {
+        val name = jsonObject.getString("oauth")
+        //Child Object
+        val jsonObjectOauth = JSONTokener(name).nextValue() as JSONObject
+        accessToken = jsonObjectOauth.getString("access_token")
+        refreshToken = jsonObjectOauth.getString("refresh_token")
+        //Log.d("My fetch ", "token: $accessToken \n refreshToken: $refreshToken" )
+    }
     fun run() : ArrayList<Task>{
         val response: String = getLoginToken()
         var allData = ArrayList<Task>()
         if(response != "NoConnection"){
-            //Main Object
+            //Convert Main Object
             val jsonObject = JSONTokener(response).nextValue() as JSONObject
-            val name = jsonObject.getString("oauth")
-            //Child Object
-            val jsonObjectOauth = JSONTokener(name).nextValue() as JSONObject
-            accessToken = jsonObjectOauth.getString("access_token")
-            refreshToken = jsonObjectOauth.getString("refresh_token")
-            //Log.d("My fetch ", "token: $accessToken \n refreshToken: $refreshToken" )
+            convertTokenToString(jsonObject)
             //Fetch the data
             if(accessToken != "" && refreshToken != ""){
                 allData = getData()
