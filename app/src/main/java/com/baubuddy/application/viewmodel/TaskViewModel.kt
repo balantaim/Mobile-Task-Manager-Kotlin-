@@ -4,16 +4,16 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.viewModelScope
-import com.baubuddy.application.data.Task
-import com.baubuddy.application.data.TaskDatabase
-import com.baubuddy.application.data.TaskRepository
+import com.baubuddy.application.model.Task
+import com.baubuddy.application.model.TaskDatabase
+import com.baubuddy.application.model.TaskRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class TaskViewModel(application: Application) : AndroidViewModel(application){
 
-    private val readAllData: LiveData<List<Task>>
-    private val repository: TaskRepository
+    val readAllData: LiveData<List<Task>>
+    val repository: TaskRepository
 
     init{
         val taskDao = TaskDatabase.getDatabase(application).taskDao()

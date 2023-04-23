@@ -1,4 +1,4 @@
-package com.baubuddy.application.data
+package com.baubuddy.application.model
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

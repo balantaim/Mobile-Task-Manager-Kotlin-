@@ -1,4 +1,4 @@
-package com.baubuddy.application.data
+package com.baubuddy.application.model
 
 import android.content.Context
 import androidx.room.Database

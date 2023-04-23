@@ -2,15 +2,11 @@ package com.baubuddy.application.worker
 
 import android.content.Context
 import android.util.Log
-import android.widget.ListView
-import android.widget.Toast
-import androidx.work.Data
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import com.baubuddy.application.R
 import com.baubuddy.application.network.GetDataFromTheServer
-import com.baubuddy.application.data.Task
-import com.baubuddy.application.data.TaskDatabase
+import com.baubuddy.application.model.Task
+import com.baubuddy.application.model.TaskDatabase
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -46,5 +42,4 @@ class NetworkWorker(appContext: Context, workerParams: WorkerParameters):
             return Result.failure()
         }
     }
-
 }
